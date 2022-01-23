@@ -61,6 +61,7 @@ FlagCreate(FlagType type, char* name, char* desc)
 int* FLAP_DefInt(char* name, char* desc, int defValue)
 {
 	Flag* flag = FlagCreate(FLAG_INT, name, desc);
+	flag->Value.Int = defValue;
 	flag->Default.Int = defValue;
 	return &flag->Value.Int;
 }
@@ -69,6 +70,7 @@ int* FLAP_DefInt(char* name, char* desc, int defValue)
 char** FLAP_DefStr(char* name, char* desc, char* defValue)
 {
 	Flag* flag = FlagCreate(FLAG_STR, name, desc);
+	flag->Value.Str = defValue;
 	flag->Default.Str = defValue;
 	return &flag->Value.Str;
 }
@@ -77,6 +79,7 @@ char** FLAP_DefStr(char* name, char* desc, char* defValue)
 bool* FLAP_DefBool(char* name, char* desc, bool defValue)
 {
 	Flag* flag = FlagCreate(FLAG_BOOL, name, desc);
+	// flag->Value.Bool = defValue;
 	flag->Default.Bool = defValue;
 	return &flag->Value.Bool;
 }
@@ -174,17 +177,27 @@ bool FLAP_Parse(int argCount, char** arguments)
 
 							case(FLAG_BOOL):
 							{
-								
+								Flags[flagIndex].Value.Bool = true;
 							}break;
 
 							case(FLAG_STR):
 							{
+								char* value = arguments[++argIndex];
+								if(value)
+								{
+									Flags[flagIndex].Value.Str = value;
+								}
+								else
+								{
+									error = true;
+								}
 								
 							}break;
 
 							default:
 							{
 								// TODO(afb) :: Log error
+								error = true;
 							}break;
 						}
 

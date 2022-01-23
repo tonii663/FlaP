@@ -6,11 +6,14 @@
 int*   FLAP_DefInt(char* name, char* desc, int defValue);
 bool*  FLAP_DefBool(char* name, char* desc, bool defValue);
 char** FLAP_DefBool(char* name, char* desc, char* defValue);
-
+bool   FLAP_Parse(int argCount, char** arguments);
 #endif
 
 // Definitions
 #ifdef FLAP_IMPLEMENTATION_
+#include <string.h>
+#include <stdlib.h>
+
 
 enum FlagType
 {
@@ -78,6 +81,136 @@ bool* FLAP_DefBool(char* name, char* desc, bool defValue)
 	return &flag->Value.Bool;
 }
 
+
+
+static int GetFlagIfValid(char* test, int testLen, char** out)
+{
+	int result = 0;
+	if(*test == '-' || *test == '/')
+	{
+		*out = test+1;
+		result = strlen(*out);
+	}
+
+	return result;
+}
+
+static bool StringCompare(char* str1, int str1Len,
+						  char* str2, int str2Len)
+{
+	bool result = false;
+	if(str1Len == str2Len)
+	{
+		result = true;
+		
+		for(int i = 0; i < str1Len; i++)
+		{
+			if(str1[i] != str2[i])
+			{
+				result = false;;
+				break;
+			}
+		}
+	}
+
+	return result;
+}
+
+static bool IsInt(char* str)
+{
+	bool result = true;
+	while(*str)
+	{
+		if(*str >= '0' && *str <= '9')
+			str++;
+		else
+		{
+			result = false;
+			break;
+		}
+	}
+
+	return result;
+}
+
+
+bool FLAP_Parse(int argCount, char** arguments)
+{
+	bool result = false;
+	if(argCount > 1)
+	{
+		result = true;
+		
+		for(int argIndex = 1; argIndex < argCount; argIndex++)
+		{
+			for(int flagIndex = 0; flagIndex < FlagCount; flagIndex++)
+			{
+				char* flag = 0;
+				int flagLen = GetFlagIfValid(arguments[argIndex],
+											 strlen(arguments[argIndex]),
+											 &flag);
+
+				if(flag)
+				{
+					if(StringCompare(flag, flagLen,
+									 Flags[flagIndex].Name,
+									 strlen(Flags[flagIndex].Name)))
+					{
+						bool error = false;
+						switch(Flags[flagIndex].Type)
+						{
+							case(FLAG_INT):
+							{
+								if(IsInt(arguments[++argIndex]))
+								{
+									Flags[flagIndex].Value.Int =
+										atoi(arguments[argIndex]);
+								}
+								else
+								{
+									error = true;
+								}
+							}break;
+
+							case(FLAG_BOOL):
+							{
+								
+							}break;
+
+							case(FLAG_STR):
+							{
+								
+							}break;
+
+							default:
+							{
+								// TODO(afb) :: Log error
+							}break;
+						}
+
+						if(error)
+						{
+							result = false;
+						}
+
+						break;
+					}
+
+				}
+				else
+				{
+					// TODO(afb) :: Log error flag
+					result = false;
+					break;
+				}
+			}
+		}
+	}
+
+	return result;
+}
+
+
 static void FLAP_DisplayValue(FILE* stream, FlagType type, FlagField field)
 {
 	switch(type)
@@ -112,13 +245,12 @@ void FLAP_Print(FILE* stream)
 	{
 		Flag* flag = &Flags[i];
 		fprintf(stream, "\t-%s\n", flag->Name);
-		fprintf(stream, "\t   %s", flag->Description);
-		fprintf(stream, "(Defaults to ");
+		fprintf(stream, "\t   %s\n", flag->Description);
+		fprintf(stream, "\t      Default value(");
 		FLAP_DisplayValue(stream, flag->Type, flag->Default);
 		fprintf(stream, ")\n");
 	}
 }
 
-#endif
-
-#endif
+#endif // FLAP_HELPER_
+#endif // FLAP_IMPLEMENTATION_

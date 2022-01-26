@@ -2,32 +2,46 @@
 // Declarations
 #ifndef FLAP_H_
 #define FLAP_H_
+#include <stdint.h>
 
-int*   FLAP_DefInt(char* name, char* desc, int defValue);
-bool*  FLAP_DefBool(char* name, char* desc, bool defValue);
-char** FLAP_DefBool(char* name, char* desc, char* defValue);
+int*   FLAP_Int(char* name, char* desc, int defValue);
+int*   FLAP_Int(char* name, char* desc, int defValue);
+int*   FLAP_Int(char* name, char* desc, int defValue);
+bool*  FLAP_Bool(char* name, char* desc, bool defValue);
+char** FLAP_Str(char* name, char* desc, char* defValue);
 bool   FLAP_Parse(int argCount, char** arguments);
+
+void FLAP_DefInt(int* var, char* name, char* desc, int defValue);
+void FLAP_DefInt64(int* var, char* name, char* desc, int defValue);
+void FLAP_DefUInt64(int* var, char* name, char* desc, int defValue);
 #endif
 
-// Definitions
+
 #ifdef FLAP_IMPLEMENTATION_
 #include <string.h>
 #include <stdlib.h>
+#include <assert.h>
 
+typedef intptr_t FlagField;
 
 enum FlagType
 {
 	FLAG_INT,
-	FLAG_STR,
+	FLAG_INT64,
+	FLAG_UINT64,
+	
+	FLAG_DEF_INT,
+	FLAG_DEF_UINT64,
+	FLAG_DEF_INT64,
+	
+	FLAG_FLOAT,
+	FLAG_DEF_FLOAT,
+	
 	FLAG_BOOL,
-};
-
-
-union FlagField
-{
-	int   Int;
-	char* Str;
-	bool  Bool;
+	FLAG_DEF_BOOL,
+	
+	FLAG_STR,
+	FLAG_DEF_STR,
 };
 
 struct Flag
@@ -50,7 +64,7 @@ static int FlagCount = 0;
 static Flag*
 FlagCreate(FlagType type, char* name, char* desc)
 {
-	// TODO(afb) :: Assert hasn't reached capacity
+	assert(FlagCount < FLAG_CAPACITY && "Too much flags. Increase capacity.");
 	Flag* result = &Flags[FlagCount++];
 	result->Name = name;
 	result->Description = desc;
@@ -58,30 +72,106 @@ FlagCreate(FlagType type, char* name, char* desc)
 	return result;
 }
 
-int* FLAP_DefInt(char* name, char* desc, int defValue)
+
+void FLAP_DefInt(int* var, char* name, char* desc, int defValue)
+{
+	Flag* flag = FlagCreate(FLAG_DEF_INT, name, desc);
+	flag->Default = defValue;
+	*(int**)&flag->Value = var;
+	*(int*)flag->Value = defValue;
+}
+
+void FLAP_DefInt64(int64_t* var, char* name, char* desc,
+					   int64_t defValue)
+{
+	Flag* flag = FlagCreate(FLAG_DEF_INT64, name, desc);
+	flag->Default = defValue;
+	*(int64_t**)&flag->Value = var;
+	*(int64_t*)flag->Value = defValue;
+}
+
+void FLAP_DefUInt64(uint64_t* var, char* name, char* desc,
+						 uint64_t defValue)
+{
+	Flag* flag = FlagCreate(FLAG_DEF_UINT64, name, desc);
+	flag->Default = defValue;
+	*(uint64_t**)&flag->Value = var;
+	*(uint64_t*)flag->Value = defValue;
+}
+
+void FLAP_DefFloat(float* var, char* name, char* desc,
+				   float defValue)
+{
+	Flag* flag = FlagCreate(FLAG_DEF_FLOAT, name, desc);
+	*(float*)&flag->Default = defValue;
+	*(float**)&flag->Value = var;
+	*(float*)flag->Value = defValue;
+}
+
+
+void FLAP_DefStr(char** var, char* name, char* desc, char* defValue)
+{
+	Flag* flag = FlagCreate(FLAG_DEF_STR, name, desc);
+	*(char**)&flag->Default = defValue;
+	*(char***)&flag->Value = var;
+	*(char**)flag->Value = defValue;
+}
+
+void FLAP_DefBool(bool* var, char* name, char* desc, bool defValue)
+{
+	Flag* flag = FlagCreate(FLAG_DEF_BOOL, name, desc);
+	*(bool**)&flag->Value = var;
+	*(bool*)flag->Value = defValue;
+	flag->Default = defValue;
+}
+
+
+uint64_t* FLAP_UInt64(char* name, char* desc, uint64_t defValue)
 {
 	Flag* flag = FlagCreate(FLAG_INT, name, desc);
-	flag->Value.Int = defValue;
-	flag->Default.Int = defValue;
-	return &flag->Value.Int;
+	flag->Value = defValue;
+	flag->Default = defValue;
+	return (uint64_t*)(&flag->Value);
 }
 
+int64_t* FLAP_Int64(char* name, char* desc, int64_t defValue)
+{
+	Flag* flag = FlagCreate(FLAG_INT, name, desc);
+	flag->Value = defValue;
+	flag->Default = defValue;
+	return (int64_t*)(&flag->Value);
+}
 
-char** FLAP_DefStr(char* name, char* desc, char* defValue)
+int* FLAP_Int(char* name, char* desc, int defValue)
+{
+	Flag* flag = FlagCreate(FLAG_INT, name, desc);
+	flag->Value = defValue;
+	flag->Default = defValue;
+	return (int*)(&flag->Value);
+}
+
+char** FLAP_Str(char* name, char* desc, char* defValue)
 {
 	Flag* flag = FlagCreate(FLAG_STR, name, desc);
-	flag->Value.Str = defValue;
-	flag->Default.Str = defValue;
-	return &flag->Value.Str;
+	*(char**)&flag->Value =  defValue;
+	*(char**)&flag->Default = defValue;
+	return (char**)(&flag->Value);
 }
 
-
-bool* FLAP_DefBool(char* name, char* desc, bool defValue)
+bool* FLAP_Bool(char* name, char* desc, bool defValue)
 {
 	Flag* flag = FlagCreate(FLAG_BOOL, name, desc);
-	// flag->Value.Bool = defValue;
-	flag->Default.Bool = defValue;
-	return &flag->Value.Bool;
+	flag->Value = defValue;
+	flag->Default = defValue;
+	return (bool*)(&flag->Value);
+}
+
+float* FLAP_Float(char* name, char* desc, float defValue)
+{
+	Flag* flag = FlagCreate(FLAG_FLOAT, name, desc);
+	*(float*)&flag->Value = defValue;
+	*(float*)&flag->Default = defValue;
+	return (float*)(&flag->Value);
 }
 
 
@@ -122,6 +212,10 @@ static bool StringCompare(char* str1, int str1Len,
 static bool IsInt(char* str)
 {
 	bool result = true;
+
+	if(*str == '-')
+		str++;
+	
 	while(*str)
 	{
 		if(*str >= '0' && *str <= '9')
@@ -136,14 +230,40 @@ static bool IsInt(char* str)
 	return result;
 }
 
+static bool IsFloat(char* str)
+{
+	bool result = true;
+
+	int dotCount = 0;
+	
+	while(*str)
+	{
+		if((*str >= '0' && *str <= '9') || *str == '.')
+		{
+			if(*str == '.')
+			{
+				dotCount++;				
+			}
+		}
+		else
+		{
+			result = false;
+			break;
+		}
+
+		str++;
+	}
+	result = result && dotCount < 2;
+	
+	return result;
+}
+
 
 bool FLAP_Parse(int argCount, char** arguments)
 {
-	bool result = false;
+	bool result = true;
 	if(argCount > 1)
 	{
-		result = true;
-		
 		for(int argIndex = 1; argIndex < argCount; argIndex++)
 		{
 			for(int flagIndex = 0; flagIndex < FlagCount; flagIndex++)
@@ -166,7 +286,7 @@ bool FLAP_Parse(int argCount, char** arguments)
 							{
 								if(IsInt(arguments[++argIndex]))
 								{
-									Flags[flagIndex].Value.Int =
+									Flags[flagIndex].Value =
 										atoi(arguments[argIndex]);
 								}
 								else
@@ -175,17 +295,129 @@ bool FLAP_Parse(int argCount, char** arguments)
 								}
 							}break;
 
-							case(FLAG_BOOL):
+							case(FLAG_DEF_INT):
 							{
-								Flags[flagIndex].Value.Bool = true;
+								if(IsInt(arguments[++argIndex]))
+								{
+									*(int*)Flags[flagIndex].Value =
+										atoi(arguments[argIndex]);
+								}
+								else
+								{
+									error = true;
+								}
 							}break;
 
+							case(FLAG_UINT64):
+							{
+								if(IsInt(arguments[++argIndex]))
+								{
+									Flags[flagIndex].Value =
+										atoll(arguments[argIndex]);
+								}
+								else
+								{
+									error = true;
+								}
+							}break;
+
+							case(FLAG_DEF_UINT64):
+							{
+								if(IsInt(arguments[++argIndex]))
+								{
+									*(uint64_t*)Flags[flagIndex].Value =
+										atoi(arguments[argIndex]);
+								}
+								else
+								{
+									error = true;
+								}
+							}break;
+
+							case(FLAG_INT64):
+							{
+								if(IsInt(arguments[++argIndex]))
+								{
+									Flags[flagIndex].Value =
+										atoll(arguments[argIndex]);
+								}
+								else
+								{
+									error = true;
+								}
+							}break;
+
+							case(FLAG_DEF_INT64):
+							{
+								if(IsInt(arguments[++argIndex]))
+								{
+									*(int64_t*)Flags[flagIndex].Value =
+										atoi(arguments[argIndex]);
+								}
+								else
+								{
+									error = true;
+								}
+							}break;
+
+							
+							case(FLAG_FLOAT):
+							{
+								if(IsFloat(arguments[++argIndex]))
+								{
+									*(float*)&Flags[flagIndex].Value =
+										(float)atof(arguments[argIndex]);
+								}
+								else
+								{
+									error = true;
+								}
+							}break;
+
+							case(FLAG_DEF_FLOAT):
+							{
+								if(IsFloat(arguments[++argIndex]))
+								{
+									*(float*)Flags[flagIndex].Value =
+										(float)atof(arguments[argIndex]);
+								}
+								else
+								{
+									error = true;
+								}
+							}break;
+							
+							case(FLAG_BOOL):
+							{
+								Flags[flagIndex].Value = true;
+							}break;
+
+							case(FLAG_DEF_BOOL):
+							{
+								*(bool*)Flags[flagIndex].Value = true;
+							}break;
+
+							
 							case(FLAG_STR):
 							{
 								char* value = arguments[++argIndex];
 								if(value)
 								{
-									Flags[flagIndex].Value.Str = value;
+									*(char**)&Flags[flagIndex].Value = value;
+								}
+								else
+								{
+									error = true;
+								}
+								
+							}break;
+
+							case(FLAG_DEF_STR):
+							{
+								char* value = arguments[++argIndex];
+								if(value)
+								{
+									**(char***)&Flags[flagIndex].Value = value;
 								}
 								else
 								{
@@ -228,19 +460,28 @@ static void FLAP_DisplayValue(FILE* stream, FlagType type, FlagField field)
 {
 	switch(type)
 	{
+		case(FLAG_DEF_INT):
 		case(FLAG_INT):
 		{
-			fprintf(stream, "%d", field.Int);
+			fprintf(stream, "%d", (int)field);
 		}break;
 
+		case(FLAG_DEF_FLOAT):
+		case(FLAG_FLOAT):
+		{
+			fprintf(stream, "%f", *(float*)&field);
+		}break;
+
+		case(FLAG_DEF_STR):
 		case(FLAG_STR):
 		{
-			fprintf(stream, "%s", field.Str);
+			fprintf(stream, "%s", (char*)field);
 		}break;
 
+		case(FLAG_DEF_BOOL):
 		case(FLAG_BOOL):
 		{
-			char* value = field.Bool ? "true" : "false";
+			char* value = field ? "true" : "false";
 			fprintf(stream, "%s", value);
 		}break;
 		
@@ -251,7 +492,7 @@ static void FLAP_DisplayValue(FILE* stream, FlagType type, FlagField field)
 #ifdef FLAP_HELPER_
 #include <stdio.h>
 
-void FLAP_Print(FILE* stream)
+void FLAP_PrintFlags(FILE* stream)
 {
 	fprintf(stream, "<OPTIONS>:\n");
 	for(int i = 0; i < FlagCount; i++)

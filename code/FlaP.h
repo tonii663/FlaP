@@ -324,7 +324,6 @@ bool FLAP_Parse(int argCount, char** arguments)
 								if(IsInt(arguments[++argIndex]))
 								{
 									// TODO(afb) :: Check for errors
-
 									int32_t value =
 										strtol(arguments[argIndex], 0, 0);
 									Flags[flagIndex].Value = value;
@@ -334,7 +333,7 @@ bool FLAP_Parse(int argCount, char** arguments)
 									error = true;
 								}
 							}break;
-
+							
 							case(FLAG_DEF_INT):
 							{
 								if(IsInt(arguments[++argIndex]))

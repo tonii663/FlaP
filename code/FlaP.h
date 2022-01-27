@@ -3,17 +3,15 @@
 #define FLAP_H_
 #include <stdint.h>
 
-int32_t*      FLAP_Int(char* name, char* desc, int defValue);
+int32_t*  FLAP_Int(char* name, char* desc, int defValue);
 int64_t*  FLAP_Int64(char* name, char* desc, int64_t defValue);
 uint64_t* FLAP_UInt64(char* name, char* desc, uint64_t defValue);
-
 bool*     FLAP_Bool(char* name, char* desc, bool defValue);
 char**    FLAP_Str(char* name, char* desc, char* defValue);
 
 void FLAP_DefInt(int32_t* var, char* name, char* desc, int defValue);
 void FLAP_DefInt64(int32_t* var, char* name, char* desc, int defValue);
 void FLAP_DefUInt64(int32_t* var, char* name, char* desc, int defValue);
-
 void FLAP_DefStr(char** var, char* name, char* desc, char* defValue);
 void FLAP_DefBool(bool* var, char* name, char* desc, bool defValue);
 
@@ -296,6 +294,69 @@ static bool IsFloat(char* str)
 }
 
 
+static void StringSplitAtFirst(char* str, char c, char** first, char** last)
+{
+	*first = str;
+	
+	while(str && str[0] != c)
+		str++;
+
+	if(str)
+	{
+		*last = str;
+	}
+	else
+	{
+		*last = 0;
+	}
+}
+
+
+static bool GetArgAndParam(char** args, int* current,
+						   char** arg, int* argLength,
+						   char** param, int* paramLength)
+{
+	bool result = true;
+
+	if(args[*current] &&
+	   (args[*current][0] == '-' || args[*current][0] == '/'))
+	{
+		char* first = 0;
+		char* last = 0;
+
+		StringSplitAtFirst(args[*current], '=', &first, &last);
+
+		if(last)
+		{
+			*arg = first;
+			*argLength = (int)(last - first);
+
+			*param = last;
+			*paramLength = strlen(*arg) - *argLength;
+			*current++;
+		}
+		else
+		{
+			*arg = args[*current++];
+			*argLength = strlen(*arg);
+			if(args[*current])
+			{
+				*param = args[*current++];
+				*paramLength = strlen(*param);
+			}
+			else
+			{
+				result = false;
+			}
+		}
+	}
+	else
+	{
+		result = false;
+	}
+	return result;
+}
+
 bool FLAP_Parse(int argCount, char** arguments)
 {
 	bool result = true;
@@ -306,9 +367,14 @@ bool FLAP_Parse(int argCount, char** arguments)
 			for(int flagIndex = 0; flagIndex < FlagCount; flagIndex++)
 			{
 				char* flag = 0;
-				int flagLen = GetFlagIfValid(arguments[argIndex],
-											 strlen(arguments[argIndex]),
-											 &flag);
+				int flagLen = 0;
+				
+				char* param = 0;
+				int paramLen = 0;
+				
+				bool success =  GetArgAndParam(arguments, &argIndex,
+											   &flag, &flagLen,
+											   &param, &paramLen);
 
 				if(flag)
 				{

@@ -1,19 +1,24 @@
-
 // Declarations
 #ifndef FLAP_H_
 #define FLAP_H_
 #include <stdint.h>
 
-int*   FLAP_Int(char* name, char* desc, int defValue);
-int*   FLAP_Int(char* name, char* desc, int defValue);
-int*   FLAP_Int(char* name, char* desc, int defValue);
-bool*  FLAP_Bool(char* name, char* desc, bool defValue);
-char** FLAP_Str(char* name, char* desc, char* defValue);
-bool   FLAP_Parse(int argCount, char** arguments);
+int32_t*      FLAP_Int(char* name, char* desc, int defValue);
+int64_t*  FLAP_Int64(char* name, char* desc, int64_t defValue);
+uint64_t* FLAP_UInt64(char* name, char* desc, uint64_t defValue);
 
-void FLAP_DefInt(int* var, char* name, char* desc, int defValue);
-void FLAP_DefInt64(int* var, char* name, char* desc, int defValue);
-void FLAP_DefUInt64(int* var, char* name, char* desc, int defValue);
+bool*     FLAP_Bool(char* name, char* desc, bool defValue);
+char**    FLAP_Str(char* name, char* desc, char* defValue);
+
+void FLAP_DefInt(int32_t* var, char* name, char* desc, int defValue);
+void FLAP_DefInt64(int32_t* var, char* name, char* desc, int defValue);
+void FLAP_DefUInt64(int32_t* var, char* name, char* desc, int defValue);
+
+void FLAP_DefStr(char** var, char* name, char* desc, char* defValue);
+void FLAP_DefBool(bool* var, char* name, char* desc, bool defValue);
+
+bool FLAP_Parse(int argCount, char** arguments);
+void FLAP_PrintFlags(FILE* stream);
 #endif
 
 
@@ -73,12 +78,12 @@ FlagCreate(FlagType type, char* name, char* desc)
 }
 
 
-void FLAP_DefInt(int* var, char* name, char* desc, int defValue)
+void FLAP_DefInt(int32_t* var, char* name, char* desc, int defValue)
 {
 	Flag* flag = FlagCreate(FLAG_DEF_INT, name, desc);
 	flag->Default = defValue;
-	*(int**)&flag->Value = var;
-	*(int*)flag->Value = defValue;
+	*(int32_t**)&flag->Value = var;
+	*(int32_t*)flag->Value = defValue;
 }
 
 void FLAP_DefInt64(int64_t* var, char* name, char* desc,
@@ -142,12 +147,12 @@ int64_t* FLAP_Int64(char* name, char* desc, int64_t defValue)
 	return (int64_t*)(&flag->Value);
 }
 
-int* FLAP_Int(char* name, char* desc, int defValue)
+int32_t* FLAP_Int(char* name, char* desc, int defValue)
 {
 	Flag* flag = FlagCreate(FLAG_INT, name, desc);
 	flag->Value = defValue;
 	flag->Default = defValue;
-	return (int*)(&flag->Value);
+	return (int32_t*)(&flag->Value);
 }
 
 char** FLAP_Str(char* name, char* desc, char* defValue)
@@ -211,27 +216,59 @@ static bool StringCompare(char* str1, int str1Len,
 
 static bool IsInt(char* str)
 {
-	bool result = true;
+	if(!str)
+		return false;
 
+	bool result = true;
 	if(*str == '-')
 		str++;
-	
-	while(*str)
+
+	if(str)
 	{
-		if(*str >= '0' && *str <= '9')
-			str++;
+		if(str != 0 && (str+1) != 0 && str[0] == '0'  && str[1] == 'x')
+		{
+			str += 2;
+		
+			while(*str)
+			{
+				if((*str >= '0' && *str <= '9') ||
+				   (*str >= 'a' && *str <= 'f') ||
+				   (*str >= 'A' && *str <= 'F'))
+					str++;
+				else
+				{
+					result = false;
+					break;
+				}
+			}
+		}
 		else
 		{
-			result = false;
-			break;
+			while(*str)
+			{
+				if(*str >= '0' && *str <= '9')
+					str++;
+				else
+				{
+					result = false;
+					break;
+				}
+			}
 		}
 	}
-
+	else
+	{
+		result = false;
+	}
+	
 	return result;
 }
 
 static bool IsFloat(char* str)
 {
+	if(!str)
+		return false;
+		
 	bool result = true;
 
 	int dotCount = 0;
@@ -286,8 +323,11 @@ bool FLAP_Parse(int argCount, char** arguments)
 							{
 								if(IsInt(arguments[++argIndex]))
 								{
-									Flags[flagIndex].Value =
-										atoi(arguments[argIndex]);
+									// TODO(afb) :: Check for errors
+
+									int32_t value =
+										strtol(arguments[argIndex], 0, 0);
+									Flags[flagIndex].Value = value;
 								}
 								else
 								{
@@ -299,8 +339,10 @@ bool FLAP_Parse(int argCount, char** arguments)
 							{
 								if(IsInt(arguments[++argIndex]))
 								{
-									*(int*)Flags[flagIndex].Value =
-										atoi(arguments[argIndex]);
+									int32_t value =
+										strtol(arguments[argIndex], 0, 0);
+									*(int32_t*)Flags[flagIndex].Value =
+										value;
 								}
 								else
 								{
@@ -312,8 +354,10 @@ bool FLAP_Parse(int argCount, char** arguments)
 							{
 								if(IsInt(arguments[++argIndex]))
 								{
+									uint64_t value =
+										strtoll(arguments[argIndex], 0, 0);
 									Flags[flagIndex].Value =
-										atoll(arguments[argIndex]);
+										value;
 								}
 								else
 								{
@@ -325,8 +369,11 @@ bool FLAP_Parse(int argCount, char** arguments)
 							{
 								if(IsInt(arguments[++argIndex]))
 								{
+									uint64_t value =
+										strtoll(arguments[argIndex], 0, 0);
+
 									*(uint64_t*)Flags[flagIndex].Value =
-										atoi(arguments[argIndex]);
+										value;
 								}
 								else
 								{
@@ -338,8 +385,11 @@ bool FLAP_Parse(int argCount, char** arguments)
 							{
 								if(IsInt(arguments[++argIndex]))
 								{
+									int64_t value =
+										strtoll(arguments[argIndex], 0, 0);
+									
 									Flags[flagIndex].Value =
-										atoll(arguments[argIndex]);
+										value;
 								}
 								else
 								{
@@ -351,8 +401,11 @@ bool FLAP_Parse(int argCount, char** arguments)
 							{
 								if(IsInt(arguments[++argIndex]))
 								{
+									int64_t value =
+										strtoll(arguments[argIndex], 0, 0);
+
 									*(int64_t*)Flags[flagIndex].Value =
-										atoi(arguments[argIndex]);
+										value;
 								}
 								else
 								{

@@ -432,9 +432,9 @@ bool FLAP_Parse(int argCount, char** arguments)
 			char* param = 0;
 			int paramLen = 0;
 			
-			GetArgAndParam(arguments, &argIndex,
-						   &flag, &flagLen,
-						   &param, &paramLen);
+			bool success = GetArgAndParam(arguments, &argIndex,
+										   &flag, &flagLen,
+										   &param, &paramLen);
 			
 			for(int flagIndex = 0; flagIndex < FlagCount; flagIndex++)
 			{
@@ -560,36 +560,37 @@ bool FLAP_Parse(int argCount, char** arguments)
 							
 							case(FLAG_BOOL):
 							{
-								if(IsTrue(param))
+								
+								if(success && IsTrue(param))
 								{
 									Flags[flagIndex].Value = true;
 								}
-								else if(IsFalse(param))
+								else if(success && IsFalse(param))
 								{
 									Flags[flagIndex].Value = false;
 								}
 								else
 								{
 									Flags[flagIndex].Value = true;
-									// argIndex--;
+									argIndex--;
 								}
 								
 							}break;
 
 							case(FLAG_DEF_BOOL):
 							{
-								if(IsTrue(param))
+								if(success && IsTrue(param))
 								{
 									*(bool*)Flags[flagIndex].Value = true;
 								}
-								else if(IsFalse(param))
+								else if(success && IsFalse(param))
 								{
 									*(bool*)Flags[flagIndex].Value = false;
 								}
 								else
 								{
 									*(bool*)Flags[flagIndex].Value = true;
-									// argIndex--;
+									argIndex--;
 								}
 								
 							}break;

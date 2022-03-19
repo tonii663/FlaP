@@ -1,22 +1,29 @@
-// Declarations
 #ifndef FLAP_H_
 #define FLAP_H_
-#include <stdint.h>
 
-int32_t*  FLAP_Int(char* name, char* desc, int defValue);
-int64_t*  FLAP_Int64(char* name, char* desc, int64_t defValue);
+#include <stdint.h>
+#include <stdbool.h>
+
+int32_t* FLAP_Int(char* name, char* desc, int defValue);
+
+int64_t* FLAP_Int64(char* name, char* desc, int64_t defValue);
+
 uint64_t* FLAP_UInt64(char* name, char* desc, uint64_t defValue);
-bool*     FLAP_Bool(char* name, char* desc, bool defValue);
-char**    FLAP_Str(char* name, char* desc, char* defValue);
+
+bool* FLAP_Bool(char* name, char* desc, bool defValue);
+
+char** FLAP_Str(char* name, char* desc, char* defValue);
 
 void FLAP_DefInt(int32_t* var, char* name, char* desc, int defValue);
-void FLAP_DefInt64(int32_t* var, char* name, char* desc, int defValue);
-void FLAP_DefUInt64(int32_t* var, char* name, char* desc, int defValue);
+void FLAP_DefInt64(int64_t* var, char* name, char* desc, int64_t defValue);
+void FLAP_DefUInt64(uint64_t* var, char* name, char* desc, uint64_t defValue);
 void FLAP_DefStr(char** var, char* name, char* desc, char* defValue);
 void FLAP_DefBool(bool* var, char* name, char* desc, bool defValue);
 
 bool FLAP_Parse(int argCount, char** arguments);
-void FLAP_PrintFlags(FILE* stream);
+
+#ifndef FLAP_NO_STDIO_
+void FLAP_PrintFlags();
 #endif
 
 
@@ -47,15 +54,15 @@ enum FlagType
 	FLAG_DEF_STR,
 };
 
-struct Flag
+typedef struct _Flag
 {
-	FlagType Type;
+	int Type;
 	char* Name;
 	char* Description;
 
 	FlagField Value;
 	FlagField Default;
-};
+}Flag;
 
 #ifndef FLAG_CAPACITY
 #define FLAG_CAPACITY 256
@@ -65,7 +72,7 @@ static Flag Flags[FLAG_CAPACITY];
 static int FlagCount = 0;
 
 static Flag*
-FlagCreate(FlagType type, char* name, char* desc)
+FlagCreate(int type, char* name, char* desc)
 {
 	assert(FlagCount < FLAG_CAPACITY && "Too much flags. Increase capacity.");
 	Flag* result = &Flags[FlagCount++];
@@ -84,8 +91,7 @@ void FLAP_DefInt(int32_t* var, char* name, char* desc, int defValue)
 	*(int32_t*)flag->Value = defValue;
 }
 
-void FLAP_DefInt64(int64_t* var, char* name, char* desc,
-				   int64_t defValue)
+void FLAP_DefInt64(int64_t* var, char* name, char* desc, int64_t defValue)
 {
 	Flag* flag = FlagCreate(FLAG_DEF_INT64, name, desc);
 	flag->Default = defValue;
@@ -93,8 +99,7 @@ void FLAP_DefInt64(int64_t* var, char* name, char* desc,
 	*(int64_t*)flag->Value = defValue;
 }
 
-void FLAP_DefUInt64(uint64_t* var, char* name, char* desc,
-					uint64_t defValue)
+void FLAP_DefUInt64(uint64_t* var, char* name, char* desc, uint64_t defValue)
 {
 	Flag* flag = FlagCreate(FLAG_DEF_UINT64, name, desc);
 	flag->Default = defValue;
@@ -176,7 +181,6 @@ float* FLAP_Float(char* name, char* desc, float defValue)
 	*(float*)&flag->Default = defValue;
 	return (float*)(&flag->Value);
 }
-
 
 
 static int GetFlagIfValid(char* test, int testLen, char** out)
@@ -453,9 +457,7 @@ bool FLAP_Parse(int argCount, char** arguments)
 							{
 								if(param && IsInt(param))
 								{
-									// TODO(afb) :: Check for errors
-									int32_t value =
-										strtol(param, 0, 0);
+									int32_t value = strtol(param, 0, 0);
 									Flags[flagIndex].Value = value;
 								}
 								else
@@ -536,7 +538,6 @@ bool FLAP_Parse(int argCount, char** arguments)
 								{
 									float value = (float)atof(param);
 									*(float*)&Flags[flagIndex].Value = value;
-										
 								}
 								else
 								{
@@ -550,7 +551,6 @@ bool FLAP_Parse(int argCount, char** arguments)
 								{
 									float value = (float)atof(param);
 									*(float*)Flags[flagIndex].Value = value;
-										
 								}
 								else
 								{
@@ -595,8 +595,6 @@ bool FLAP_Parse(int argCount, char** arguments)
 								
 							}break;
 
-							// TODO(afb) :: Add mutiple parameter parsing to
-							// strings.
 							case(FLAG_STR):
 							{
 								char* value = param;
@@ -636,7 +634,7 @@ bool FLAP_Parse(int argCount, char** arguments)
 						{
 							result = false;
 						}
-
+						
 						break;
 					}
 
@@ -655,56 +653,83 @@ bool FLAP_Parse(int argCount, char** arguments)
 }
 
 
-static void FLAP_DisplayValue(FILE* stream, FlagType type, FlagField field)
+#ifndef FLAP_NO_STDIO_
+#include <stdio.h>
+
+
+#define BUFFER_SIZE 4096
+char Buffer[BUFFER_SIZE];
+int BufferIndex;
+
+static void FLAP_DisplayValue(int type, FlagField field)
 {
 	switch(type)
 	{
 		case(FLAG_DEF_INT):
 		case(FLAG_INT):
 		{
-			fprintf(stream, "%d", (int)field);
+			BufferIndex += sprintf_s(Buffer + BufferIndex,
+									BUFFER_SIZE - BufferIndex,
+									"%d", (int)field);
 		}break;
 
 		case(FLAG_DEF_FLOAT):
 		case(FLAG_FLOAT):
 		{
-			fprintf(stream, "%f", *(float*)&field);
+			BufferIndex += sprintf_s(Buffer + BufferIndex,
+								  BUFFER_SIZE - BufferIndex,
+								  "%f", *(float*)&field);
 		}break;
 
 		case(FLAG_DEF_STR):
 		case(FLAG_STR):
 		{
-			fprintf(stream, "%s", (char*)field);
+			BufferIndex += sprintf_s(Buffer + BufferIndex,
+									BUFFER_SIZE - BufferIndex,
+									"%s", (char*)field);
 		}break;
 
 		case(FLAG_DEF_BOOL):
 		case(FLAG_BOOL):
 		{
 			char* value = field ? "true" : "false";
-			fprintf(stream, "%s", value);
+			BufferIndex += sprintf_s(Buffer + BufferIndex,
+									BUFFER_SIZE - BufferIndex, "%s", value);
 		}break;
 		
 		default: break;
 	}
 }
 
-#ifdef FLAP_HELPER_
-#include <stdio.h>
 
-void FLAP_PrintFlags(FILE* stream)
+void FLAP_PrintFlags()
 {
-	fprintf(stream, "<OPTIONS>:\n");
+	BufferIndex += sprintf_s(Buffer + BufferIndex, BUFFER_SIZE - BufferIndex,
+							"<OPTIONS>:\n");
+
 	for(int i = 0; i < FlagCount; i++)
 	{
 		Flag* flag = &Flags[i];
-		fprintf(stream, "\t-%s\n", flag->Name);
-		fprintf(stream, "\t   %s\n", flag->Description);
-		fprintf(stream, "\t      Default value(");
-		FLAP_DisplayValue(stream, flag->Type, flag->Default);
-		fprintf(stream, ")\n");
+
+		BufferIndex += sprintf_s(Buffer + BufferIndex,
+								BUFFER_SIZE - BufferIndex, "\t-%s\n",
+								flag->Name);
+		BufferIndex += sprintf_s(Buffer + BufferIndex,
+								BUFFER_SIZE - BufferIndex,
+								"\t   %s\n", flag->Description);
+		BufferIndex += sprintf_s(Buffer + BufferIndex,
+								BUFFER_SIZE - BufferIndex,
+								"\t      Default value(");
+
+		FLAP_DisplayValue(flag->Type, flag->Default);
+		BufferIndex += sprintf_s(Buffer + BufferIndex,
+								BUFFER_SIZE - BufferIndex, ")\n");
 	}
+
+	printf("%s\n", Buffer);
 }
 
-#endif // FLAP_HELPER_
+#endif // FLAP_NO_STDIO_
 #endif // FLAP_IMPLEMENTATION_
+#endif // FLAP_H_
 

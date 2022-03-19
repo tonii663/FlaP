@@ -30,7 +30,7 @@ int main(int argc, char** argv)
 	{
 		if(help)
 		{
-			FLAP_PrintFlags(stdout);
+			FLAP_PrintFlags();
 		}
 		else
 		{

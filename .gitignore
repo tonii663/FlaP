@@ -2,3 +2,6 @@ misc/
 build/
 code/build.bat
 code/Test.cpp
+code/Test.c
+code/Main.cpp
+*.exe
